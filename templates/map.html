@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+<meta charset="UTF-8">
+<title>Sample_GoogleMap_with_CurrentLocation</title>
+
+<script src="https://maps.google.com/maps/api/js?key=AIzaSyBVf2L2W59AyS81Z6qv5fqd2JW-XjAW_pA&language=ja"></script>
+
+<style>
+html, body { height: 100%; margin: 0; padding: 0; }
+#map { height: 100%; width: 100%; }
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script>
+// 地図のオプション
+var Options = {
+  zoom: 17,          // ズームレベル
+  mapTypeId: 'roadmap' // 地図の種類
+};
+
+// 地図を表示
+var map = new google.maps.Map(document.getElementById('map'), Options);
+
+// 現在地を取得する
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(function(position) {
+    var MyLatLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+    
+    // 地図の中心を現在地に設定
+    map.setCenter(MyLatLng);
+    
+    // 現在地にマーカーを設定
+    var marker = new google.maps.Marker({
+      position: MyLatLng,
+      map: map,
+      title: 'あなたの現在地'
+    });
+  }, function() {
+    // エラーハンドリング
+    handleLocationError(true, map.getCenter());
+  });
+} else {
+  // ブラウザが位置情報をサポートしていない場合の処理
+  handleLocationError(false, map.getCenter());
+}
+
+// エラーハンドリング関数
+function handleLocationError(browserHasGeolocation, pos) {
+  alert(browserHasGeolocation ?
+        'エラー: 現在地情報を取得できませんでした。' :
+        'エラー: このブラウザは位置情報をサポートしていません。');
+  map.setCenter(pos);
+}
+</script>
+
+</body>
+</html>
