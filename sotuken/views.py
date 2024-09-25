@@ -13,5 +13,7 @@ def map(request):
 
 def search(request):
   if request.method == 'GET':
-    search = request.GET.get('search')
+    search_condition = request.GET.get['search-condition']
+    if search_condition == "場所":
+      search = request.GET.get('search')
     return render(request,'map.html',{'search':search})

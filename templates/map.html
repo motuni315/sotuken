@@ -15,8 +15,15 @@ html, body { height: 100%; margin: 0; padding: 0; }
 
 <body>
 <form method="get" action="{% url 'search' %}">
-  <label for="search">探したいもの：</label>
-  <input type="text" id="search" name="search" value="{{ search }}">
+  <label for="search">検索条件</label>
+    <div id="input-container">
+      <select name="search-condition">
+        <option value="場所" {% if search == '場所' %}selected{% endif %}>場所</option>
+        <option value="時間" {% if search == '時間' %}selected{% endif %}>時間</option>
+        <option value="特徴" {% if search == '特徴' %}selected{% endif %}>特徴</option>
+      </select>
+    <input type="text" id="search" name="search" value="{{ search }}">
+    </div>
   <button>検索</button>
 </form>
 
@@ -48,7 +55,7 @@ if (navigator.geolocation) {
       map: map,
       title: 'あなたの現在地'
     });
-    
+
     // 検索キーワードを取得
         var searchQuery = "{{ search|default_if_none:'' }}";
     if(searchQuery !== '' ){
@@ -58,8 +65,8 @@ if (navigator.geolocation) {
             radius: 1000, // 検索する半径（メートル）
             keyword: searchQuery // 検索するキーワード
         };
-    
-    
+
+
     service.nearbySearch(request, function(results, status) {
             if (status === google.maps.places.PlacesServiceStatus.OK) {
                 // 結果に基づいてマーカーを作成
@@ -68,13 +75,14 @@ if (navigator.geolocation) {
                 }
             }
         });
-    
+
     function createMarker(place) {
             var marker = new google.maps.Marker({
                 map: map,
-                position: place.geometry.location
+                position: place.geometry.location,
+                
             });
-            
+
             // マーカーをクリックしたときに場所の名前を表示
             google.maps.event.addListener(marker, 'click', function () {
               new google.maps.InfoWindow({
