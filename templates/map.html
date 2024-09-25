@@ -5,41 +5,84 @@
 <meta charset="UTF-8">
 <title>Sample_GoogleMap_with_CurrentLocation</title>
 
-<script src="https://maps.google.com/maps/api/js?key=AIzaSyBVf2L2W59AyS81Z6qv5fqd2JW-XjAW_pA&language=ja"></script>
+<script src="https://maps.google.com/maps/api/js?key=AIzaSyBVf2L2W59AyS81Z6qv5fqd2JW-XjAW_pA&libraries=places&language=ja"></script>
 
 <style>
 html, body { height: 100%; margin: 0; padding: 0; }
-#map { height: 100%; width: 100%; }
+#map { height: 80%; width: 100%; }
 </style>
 </head>
 
 <body>
+<form method="get" action="{% url 'search' %}">
+  <label for="search">探したいもの：</label>
+  <input type="text" id="search" name="search" value="{{ search }}">
+  <button>検索</button>
+</form>
+
+
 <div id="map"></div>
 
 <script>
 // 地図のオプション
 var Options = {
-  zoom: 17,          // ズームレベル
+  zoom: 16,          // ズームレベル
   mapTypeId: 'roadmap' // 地図の種類
 };
 
 // 地図を表示
 var map = new google.maps.Map(document.getElementById('map'), Options);
 
+
 // 現在地を取得する
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(function(position) {
     var MyLatLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-    
+
     // 地図の中心を現在地に設定
     map.setCenter(MyLatLng);
-    
+
     // 現在地にマーカーを設定
     var marker = new google.maps.Marker({
       position: MyLatLng,
       map: map,
       title: 'あなたの現在地'
     });
+    
+    // 検索キーワードを取得
+        var searchQuery = "{{ search|default_if_none:'' }}";
+    if(searchQuery !== '' ){
+    var service = new google.maps.places.PlacesService(map);
+    var request = {
+            location: MyLatLng,
+            radius: 1000, // 検索する半径（メートル）
+            keyword: searchQuery // 検索するキーワード
+        };
+    
+    
+    service.nearbySearch(request, function(results, status) {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+                // 結果に基づいてマーカーを作成
+                for (var i = 0; i < results.length; i++) {
+                    createMarker(results[i]);
+                }
+            }
+        });
+    
+    function createMarker(place) {
+            var marker = new google.maps.Marker({
+                map: map,
+                position: place.geometry.location
+            });
+            
+            // マーカーをクリックしたときに場所の名前を表示
+            google.maps.event.addListener(marker, 'click', function () {
+              new google.maps.InfoWindow({
+                content: place.name
+              }).open(map, marker);
+            });
+        }
+      }
   }, function() {
     // エラーハンドリング
     handleLocationError(true, map.getCenter());
@@ -56,7 +99,9 @@ function handleLocationError(browserHasGeolocation, pos) {
         'エラー: このブラウザは位置情報をサポートしていません。');
   map.setCenter(pos);
 }
+
 </script>
+
 
 </body>
 </html>

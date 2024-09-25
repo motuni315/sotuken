@@ -11,3 +11,7 @@ def index(request):
 def map(request):
   return render(request, 'map.html')
 
+def search(request):
+  if request.method == 'GET':
+    search = request.GET.get('search')
+    return render(request,'map.html',{'search':search})
