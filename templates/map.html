@@ -2,114 +2,183 @@
 <html lang="ja">
 
 <head>
-<meta charset="UTF-8">
-<title>Sample_GoogleMap_with_CurrentLocation</title>
+    <meta charset="UTF-8">
+    <title>マップ検索</title>
 
-<script src="https://maps.google.com/maps/api/js?key=AIzaSyBVf2L2W59AyS81Z6qv5fqd2JW-XjAW_pA&libraries=places&language=ja"></script>
+    <script src="https://maps.google.com/maps/api/js?key=AIzaSyBVf2L2W59AyS81Z6qv5fqd2JW-XjAW_pA&libraries=places&language=ja"></script>
 
-<style>
-html, body { height: 100%; margin: 0; padding: 0; }
-#map { height: 80%; width: 100%; }
-</style>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; }
+        #map { height: 80%; width: 100%; }
+        #results { padding: 10px; border-top: 1px solid #ccc; overflow-y: auto; height: 200px; }
+        .place-item { padding: 5px; cursor: pointer; }
+        .place-item:hover { background-color: #f0f0f0; }
+        .route-button { margin-top: 5px; }
+    </style>
 </head>
 
 <body>
-<form method="get" action="{% url 'search' %}">
-  <label for="search">検索条件</label>
-    <div id="input-container">
-      <select name="search-condition">
-        <option value="場所" {% if search == '場所' %}selected{% endif %}>場所</option>
-        <option value="時間" {% if search == '時間' %}selected{% endif %}>時間</option>
-        <option value="特徴" {% if search == '特徴' %}selected{% endif %}>特徴</option>
-      </select>
-    <input type="text" id="search" name="search" value="{{ search }}">
-    </div>
-  <button>検索</button>
-</form>
+    <form method="get" action="{% url 'search' %}">
+        <label for="search">検索条件</label>
+        <div id="input-container">
+            <select name="search-condition">
+                <option value="場所" {% if search == '場所' %}selected{% endif %}>場所</option>
+                <option value="時間" {% if search == '時間' %}selected{% endif %}>時間</option>
+                <option value="特徴" {% if search == '特徴' %}selected{% endif %}>特徴</option>
+            </select>
+            <input type="text" id="search" name="search" value="{{ search }}">
+            <button type="submit" value="search_button">検索</button>
+        </div>
+    </form>
 
+    <div id="map"></div>
+    <div id="results"></div>
 
-<div id="map"></div>
-
-<script>
-// 地図のオプション
-var Options = {
-  zoom: 16,          // ズームレベル
-  mapTypeId: 'roadmap' // 地図の種類
-};
-
-// 地図を表示
-var map = new google.maps.Map(document.getElementById('map'), Options);
-
-
-// 現在地を取得する
-if (navigator.geolocation) {
-  navigator.geolocation.getCurrentPosition(function(position) {
-    var MyLatLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-
-    // 地図の中心を現在地に設定
-    map.setCenter(MyLatLng);
-
-    // 現在地にマーカーを設定
-    var marker = new google.maps.Marker({
-      position: MyLatLng,
-      map: map,
-      title: 'あなたの現在地'
-    });
-
-    // 検索キーワードを取得
-        var searchQuery = "{{ search|default_if_none:'' }}";
-    if(searchQuery !== '' ){
-    var service = new google.maps.places.PlacesService(map);
-    var request = {
-            location: MyLatLng,
-            radius: 1000, // 検索する半径（メートル）
-            keyword: searchQuery // 検索するキーワード
+    <script>
+        // 地図のオプション
+        var Options = {
+            zoom: 16,          // ズームレベル
+            mapTypeId: 'roadmap' // 地図の種類
         };
 
+        // 地図を表示
+        var map = new google.maps.Map(document.getElementById('map'), Options);
+        var infoWindow = new google.maps.InfoWindow();
+        var userMarker; // 現在地マーカーを保持
+        var directionsRenderer = new google.maps.DirectionsRenderer(); // DirectionsRendererをグローバルに宣言
+        directionsRenderer.setMap(map); // 地図に経路を表示するための設定
 
-    service.nearbySearch(request, function(results, status) {
-            if (status === google.maps.places.PlacesServiceStatus.OK) {
-                // 結果に基づいてマーカーを作成
-                for (var i = 0; i < results.length; i++) {
-                    createMarker(results[i]);
+        // 現在地を取得する
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (position) {
+                var MyLatLng = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+                // 地図の中心を現在地に設定
+                map.setCenter(MyLatLng);
+
+                // 現在地にマーカーを設定
+                userMarker = new google.maps.Marker({
+                    position: MyLatLng,
+                    map: map,
+                    title: 'あなたの現在地'
+                });
+
+                // 検索キーワードを取得
+                var searchQuery = "{{ search|default_if_none:'' }}";
+                if (searchQuery !== '') {
+                    var service = new google.maps.places.PlacesService(map);
+                    var request = {
+                        location: MyLatLng,
+                        radius: 1000, // 検索する半径（メートル）
+                        keyword: searchQuery // 検索するキーワード
+                    };
+
+                    service.nearbySearch(request, function (results, status) {
+                        if (status === google.maps.places.PlacesServiceStatus.OK) {
+                            // 結果をリスト表示
+                            displayResults(results);
+                            // 結果に基づいてマーカーを作成
+                            for (var i = 0; i < results.length; i++) {
+                                createMarker(results[i]);
+                            }
+                        }
+                    });
+
+                    function createMarker(place) {
+                        var marker = new google.maps.Marker({
+                            map: map,
+                            position: place.geometry.location,
+                        });
+
+                        // マーカーをクリックしたときに詳細情報を表示
+                        google.maps.event.addListener(marker, 'click', function () {
+                            var content = `
+                                <div>
+                                    <strong>${place.name}</strong><br>
+                                    <p>${place.vicinity}</p>
+                                    <button class="route-button" onclick="getRoute(${position.coords.latitude}, ${position.coords.longitude}, ${place.geometry.location.lat()}, ${place.geometry.location.lng()})">経路を見る</button>
+                                    <img src="${place.photos ? place.photos[0].getUrl({maxWidth: 200, maxHeight: 200}) : ''}" alt="${place.name}">
+                                </div>
+                            `;
+                            infoWindow.setContent(content);
+                            infoWindow.open(map, marker);
+                        });
+                    }
+
+                    function displayResults(results) {
+                        var resultsContainer = document.getElementById('results');
+                        resultsContainer.innerHTML = ''; // 既存の結果をクリア
+                        results.forEach(function (place, index) {
+                            var placeItem = document.createElement('div');
+                            placeItem.classList.add('place-item');
+                            placeItem.textContent = `${index + 1}. ${place.name}`;
+
+                            // リスト項目をクリックしたときの処理
+                            placeItem.addEventListener('click', function () {
+                                map.setCenter(place.geometry.location);
+                                var content = `
+                                    <div>
+                                        <strong>${place.name}</strong><br>
+                                        <p>${place.vicinity}</p>
+                                        <button class="route-button" onclick="getRoute(${position.coords.latitude}, ${position.coords.longitude}, ${place.geometry.location.lat()}, ${place.geometry.location.lng()})">経路を見る</button>
+                                        <img src="${place.photos ? place.photos[0].getUrl({maxWidth: 200, maxHeight: 200}) : ''}" alt="${place.name}">
+                                    </div>
+                                `;
+                                infoWindow.setContent(content);
+                                infoWindow.open(map, new google.maps.Marker({
+                                    position: place.geometry.location,
+                                    map: map
+                                }));
+                            });
+
+                            resultsContainer.appendChild(placeItem);
+                        });
+                    }
                 }
-            }
-        });
-
-    function createMarker(place) {
-            var marker = new google.maps.Marker({
-                map: map,
-                position: place.geometry.location,
-                
+            }, function () {
+                // エラーハンドリング
+                handleLocationError(true, map.getCenter());
             });
+        } else {
+            // ブラウザが位置情報をサポートしていない場合の処理
+            handleLocationError(false, map.getCenter());
+        }
 
-            // マーカーをクリックしたときに場所の名前を表示
-            google.maps.event.addListener(marker, 'click', function () {
-              new google.maps.InfoWindow({
-                content: place.name
-              }).open(map, marker);
+        // エラーハンドリング関数
+        function handleLocationError(browserHasGeolocation, pos) {
+            alert(browserHasGeolocation ?
+                'エラー: 現在地情報を取得できませんでした。' :
+                'エラー: このブラウザは位置情報をサポートしていません。');
+            map.setCenter(pos);
+        }
+
+        // 経路を取得する関数
+        function getRoute(startLat, startLng, endLat, endLng) {
+            // 以前の経路を消去
+            directionsRenderer.setMap(null); // まず経路をクリア
+            directionsRenderer = new google.maps.DirectionsRenderer(); // 新しいDirectionsRendererを作成
+            directionsRenderer.setMap(map); // 地図に新しい経路を表示するための設定
+
+            var directionsService = new google.maps.DirectionsService();
+
+            var start = new google.maps.LatLng(startLat, startLng);
+            var end = new google.maps.LatLng(endLat, endLng);
+
+            var request = {
+                origin: start,
+                destination: end,
+                travelMode: google.maps.TravelMode.WALKING // 移動手段を設定（車の場合）
+            };
+
+            directionsService.route(request, function(response, status) {
+                if (status === google.maps.DirectionsStatus.OK) {
+                    directionsRenderer.setDirections(response);
+                } else {
+                    alert('経路を取得できませんでした。');
+                }
             });
         }
-      }
-  }, function() {
-    // エラーハンドリング
-    handleLocationError(true, map.getCenter());
-  });
-} else {
-  // ブラウザが位置情報をサポートしていない場合の処理
-  handleLocationError(false, map.getCenter());
-}
 
-// エラーハンドリング関数
-function handleLocationError(browserHasGeolocation, pos) {
-  alert(browserHasGeolocation ?
-        'エラー: 現在地情報を取得できませんでした。' :
-        'エラー: このブラウザは位置情報をサポートしていません。');
-  map.setCenter(pos);
-}
-
-</script>
-
-
+    </script>
 </body>
 </html>
