@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>画像アップロード</title>
+  <script src="js/sotuken.js"></script>
+</head>
+<body>
+    <h1>画像アップロード</h1>
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- 画像 -->
+        <div>
+            <label for="image">画像:</label>
+            <input type="file" id="image" name="image" required>
+        </div>
+
+        <!-- 品名 -->
+{#        <div>#}
+{#            <input type="hidden" id="item_name" name="item_name" required>#}
+{#        </div>#}
+
+        <!-- 色 -->
+{#        <div>#}
+{#            <label for="color">色:</label>#}
+{#            <input type="text" id="color" name="color" required>#}
+{#        </div>#}
+
+        <!-- ジャンル -->
+{#        <div>#}
+{#            <label for="genre">ジャンル:</label>#}
+{#            <input type="text" id="genre" name="genre" required>#}
+{#        </div>#}
+
+        <!-- 落とした場所 -->
+        <div>
+            <input type="hidden" id="lost_location" name="lost_location" required>
+        </div>
+
+        <!-- 拾った時間 -->
+        <div>
+            <input type="hidden" id="found_time" name="found_time" required>
+        </div>
+
+        <!-- ラベル検出オプション -->
+        <div>
+            <label for="label_detection_option">ラベル検出オプション:</label>
+            <select id="label_detection_option" name="label_detection_option">
+                <option value="default">デフォルトラベルを使用</option>
+                <option value="custom">カスタムラベルを使用</option>
+            </select>
+        </div>
+
+        <input type="hidden" id="location" name="location">
+
+        <button type="submit">アップロード</button>
+    </form>
+
+    <!-- 検出結果を表示するエリア -->
+    <div id="detected_labels"></div>
+</body>
+</html>
