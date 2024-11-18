@@ -77,8 +77,14 @@ WSGI_APPLICATION = 'GradurationExamination.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'r4a143kurasaki',
+        'USER': 'kurasakishoki',
+        'PASSWORD': 'Shoki_0315',
+        'HOST': 'localhost',  # あるいは、MySQLサーバーのホスト名
+        'PORT': '3306',  # あるいは、使用しているポート番号
+
+
     }
 }
 
