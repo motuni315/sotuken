@@ -1,25 +1,24 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-    <title>カメラ起動</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    
+    <title>落とし物捜索画面</title>
 </head>
 <body>
-    <h2>カメラを起動するには、登録ボタンを押してください</h2>
-    <button id="start-camera">登録</button>
-    <video id="camera-stream" width="320" height="240" autoplay></video>
-
-    <script>
-        const startCameraButton = document.getElementById('start-camera');
-        const cameraStream = document.getElementById('camera-stream');
-
-        startCameraButton.addEventListener('click', async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                cameraStream.srcObject = stream;
-            } catch (error) {
-                console.error("カメラの起動に失敗しました: ", error);
-            }
-        });
-    </script>
+    <div class="container">
+        <h1>落とし物捜索画面</h1>
+        <div class="button-container">
+            <a class="button register-button" href="{% url 'map_view' %}">
+                マップ検索 <img src="#" alt="マップロゴ">
+            </a>
+            <a class="button search-button" href="#">
+                落とし物登録 <img src="#" alt="登録ロゴ">
+            </a>
+        </div>
+    </div>
 </body>
 </html>
