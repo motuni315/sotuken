@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <title>落とし物検索</title>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCqHlGwfNy0uPR4h0GakNZW16cRtHr1cWg&callback=initMap"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBVf2L2W59AyS81Z6qv5fqd2JW-XjAW_pA&callback=initMap"></script>
     <style>
         #map {
             height: 500px;
@@ -23,7 +23,7 @@
             border-radius: 8px; /* 角を丸くする */
             transition: border-color 0.3s ease;
         }
-        
+
         ul#item-list li:hover {
             border-color: #007bff; /* ホバー時に縁の色を変更 */
         }
@@ -37,8 +37,8 @@
         .pagination {
             margin: 20px 0;
         }
-        
-        
+
+
     </style>
 </head>
 <body>
@@ -236,13 +236,12 @@
                 const marker = new google.maps.Marker({
                     position: latLng,
                     map: map,
-                    title: item.description
+                    title: item.product
                 });
                 const infoWindow = new google.maps.InfoWindow({
                     content: `
                         <div>
-                            <img src="${item.image_url || ''}" alt="Lost Item" style="width:auto;height:auto;">
-                            <p><strong>${item.description}</strong></p>
+                            <img src="${item.image_url || ''}" alt="Lost Item" style="width:auto;height:auto;">                            <p><button onclick="location.href='/item/${item.id}/';">詳細を見る</button></p>
                         </div>`
                 });
                 marker.addListener('click', () => {
@@ -272,21 +271,22 @@
             li.innerHTML = `
                 <div class="item-list" onclick="focusMarker(${index});">
                     ${item.image_url ? `<img src="${item.image_url}" alt="Image">` : ''}
-                    <p>品目：${item.description}</p>
+                    <p>品目：${item.product}</p>
                     <p>場所: ${item.prefecture}</p>
                     <p>時間: ${item.date_time}</p>
+                    <button onclick="location.href='/item/${item.id}/'; event.stopPropagation();">詳細を見る</button>
                 </div>
             `;
             itemList.appendChild(li);
         });
     }
-    
+
     function focusMarker(index) {
         const marker = markers[index];
         map.setCenter(marker.getPosition());
         map.setZoom(16);
         google.maps.event.trigger(marker, 'click');
-        
+
         document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 

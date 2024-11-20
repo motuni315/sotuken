@@ -2,7 +2,7 @@ from datetime import datetime
 from urllib import request
 
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from .models import LostItem
 
 
@@ -60,7 +60,7 @@ def search_items(request):
     # 基本のフィルタリング
     items = LostItem.objects.all()
     if item_name:
-      items = items.filter(description__icontains=item_name)
+      items = items.filter(product__icontains=item_name)
     if prefecture:
       items = items.filter(prefecture__icontains=prefecture)
 
@@ -77,7 +77,7 @@ def search_items(request):
       {
         'id': item.id,
         'date_time': item.date_time.strftime('%Y-%m-%d %H:%M:%S'),
-        'description': item.description,
+        'product': item.product,
         'image_url': item.image_url if item.image_url else None,
         'latitude': float(item.latitude),
         'longitude': float(item.longitude),
@@ -91,3 +91,8 @@ def search_items(request):
     # エラーログの出力
     print(f"Error in search_items: {e}")
     return JsonResponse({'error': str(e)}, status=500)
+
+
+def item_detail(request, item_id):
+    item = get_object_or_404(LostItem, id=item_id)
+    return render(request, 'item_detail.html', {'item': item})
