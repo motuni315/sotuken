@@ -17,15 +17,23 @@
 
         ul#item-list li {
             margin-bottom: 20px;
-            border: 2px solid #ccc; /* 縁を追加 */
+            border: 2px solid #ccc;
             width: 80%;
             padding: 10px;
-            border-radius: 8px; /* 角を丸くする */
+            border-radius: 8px;
+            display: flex; /* 横並びにするためにflexboxを使用 */
+            align-items: center; /* アイテムを中央に配置 */
             transition: border-color 0.3s ease;
         }
 
         ul#item-list li:hover {
             border-color: #007bff; /* ホバー時に縁の色を変更 */
+        }
+        
+        ul#item-list .item-list {
+            display: flex;
+            width: 100%;
+            justify-content: space-between; /* アイテムを横に並べる */
         }
 
         ul#item-list img {
@@ -270,10 +278,14 @@
             const li = document.createElement('li');
             li.innerHTML = `
                 <div class="item-list" onclick="focusMarker(${index});">
-                    ${item.image_url ? `<img src="${item.image_url}" alt="Image">` : ''}
-                    <p>品目：${item.product}</p>
-                    <p>場所: ${item.prefecture}</p>
-                    <p>時間: ${item.date_time}</p>
+                    <div class="item-image">
+                        ${item.image_url ? `<img src="${item.image_url}" alt="Image">` : ''}
+                    </div>
+                    <div class="item-details">
+                        <p><strong>品目：</strong>${item.product}</p>
+                        <p><strong>場所：</strong>${item.prefecture}</p>
+                        <p><strong>時間：</strong>${item.date_time}</p>
+                    </div>
                     <button onclick="location.href='/item/${item.id}/'; event.stopPropagation();">詳細を見る</button>
                 </div>
             `;
