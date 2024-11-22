@@ -96,3 +96,4 @@ def search_items(request):
 def item_detail(request, item_id):
     item = get_object_or_404(LostItem, id=item_id)
     return render(request, 'item_detail.html', {'item': item})
+
