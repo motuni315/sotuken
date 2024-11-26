@@ -20,6 +20,12 @@
             flex: 1;
             min-width: 300px;
         }
+
+        #directions-panel {
+            margin-top: 20px;
+            max-width: 500px;
+            display: none; /* 初期状態で非表示 */
+        }
     </style>
 </head>
 <body>
@@ -31,174 +37,164 @@
             <p><strong>登録された日時：</strong> {{ item.date_time|date:"n月j日G時i分" }}</p>
             <p><strong>説明や備考：</strong> {% if item.comment %}{{ item.comment }}{% else %}なし{% endif %}</p>
             <p><strong>現在地からの距離：</strong> <span id="distance">計算中...</span></p>
+          <p><strong>経路情報：</strong><button id="open-map">マップで確認する</button></p>
         </div>
         <div>
             <div id="map"></div>
         </div>
     </div>
 
-    <!-- 移動手段選択 & 経路表示 -->
+    <!-- マップで確認するボタン -->
     <div style="margin-top: 20px;">
-        <label for="travel-mode">移動手段を選択:</label>
-        <select id="travel-mode">
-            <option value="WALKING">徒歩</option>
-            <option value="DRIVING">車</option>
-            <!--<option value="BICYCLING">自転車</option>
-            <option value="TRANSIT">公共交通機関</option> -->
-        </select>
-        <button id="show-route" style="margin-left: 10px;">経路情報を表示</button>
+        
     </div>
-
+    
     <!-- 戻るボタン -->
     <button onclick="goBack()" style="margin-top: 20px;">戻る</button>
 
     <script>
-    let map;
-    let directionsService;
-    let directionsRenderer;
-    let markers = []; // マーカーを管理するリスト
-    
-    function initMap() {
-        const itemLocation = {
-            lat: {{ item.latitude }},
-            lng: {{ item.longitude }}
-        };
-    
-        map = new google.maps.Map(document.getElementById('map'), {
-            center: itemLocation,
-            zoom: 15,
-            mapTypeId: 'hybrid',
-            mapTypeControl: true,
-            mapTypeControlOptions: {
-                style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
-                position: google.maps.ControlPosition.TOP_RIGHT
-            }
-        });
-    
-        directionsService = new google.maps.DirectionsService();
-        directionsRenderer = new google.maps.DirectionsRenderer({
-            map: map,
-            suppressMarkers: true // デフォルトのマーカーを非表示
-        });
-    
-        const itemMarker = new google.maps.Marker({
-            position: itemLocation,
-            map: map,
-            title: '{{ item.product }}'
-        });
-    
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    const currentLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-    
-                    const currentLocationMarker = new google.maps.Marker({
-                        position: currentLocation,
-                        map: map,
-                        title: '現在地',
-                        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-                    });
-    
-                    const bounds = new google.maps.LatLngBounds();
-                    bounds.extend(itemLocation);
-                    bounds.extend(currentLocation);
-                    map.fitBounds(bounds);
-    
-                    const distance = calculateDistance(
-                        currentLocation.lat,
-                        currentLocation.lng,
-                        itemLocation.lat,
-                        itemLocation.lng
-                    );
-                    document.getElementById("distance").innerText = `${distance}m`;
-    
-                    document.getElementById("show-route").addEventListener("click", () => {
-                        const selectedMode = document.getElementById("travel-mode").value;
-                        displayRoute(currentLocation, itemLocation, selectedMode);
-                    });
-                },
-                error => {
-                    console.error("現在地を取得できませんでした:", error);
-                    document.getElementById("distance").innerText = "現在地を取得できません";
-                }
-            );
-        } else {
-            document.getElementById("distance").innerText = "ブラウザが現在地をサポートしていません";
-        }
-    }
-    
-    function displayRoute(origin, destination, travelMode) {
-        // 古い経路情報をクリア
-        directionsRenderer.set('directions', null);
-    
-        // 古いマーカーを削除
-        clearMarkers();
-    
-        const request = {
-            origin: origin,
-            destination: destination,
-            travelMode: google.maps.TravelMode[travelMode]
-        };
-    
-        if (travelMode === 'TRANSIT') {
-            request.transitOptions = {
-                departureTime: new Date(), // 現在時刻
+        let map;
+        let currentLocation;
+
+        function initMap() {
+            const itemLocation = {
+                lat: {{ item.latitude }},
+                lng: {{ item.longitude }}
             };
-        }
-    
-        directionsService.route(request, (result, status) => {
-            if (status === google.maps.DirectionsStatus.OK) {
-                directionsRenderer.setDirections(result);
-    
-                const leg = result.routes[0].legs[0];
-    
-                // 新しいマーカーを追加
-                addMarker(leg.start_location, '出');
-                addMarker(leg.end_location, '着');
-            } else {
-                alert("経路情報を取得できませんでした: " + status);
+        
+            // 地図を表示
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: itemLocation,
+                zoom: 15,
+                mapTypeId: 'hybrid',
+                mapTypeControl: true,
+                mapTypeControlOptions: {
+                    style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+                    position: google.maps.ControlPosition.TOP_RIGHT
+                }
+            });
+        
+            const itemMarker = new google.maps.Marker({
+                position: itemLocation,
+                map: map,
+                title: '{{ item.product }}'
+            });
+        
+            // Geocoderインスタンスを作成
+            const geocoder = new google.maps.Geocoder();
+        
+            // アイテムの位置を逆ジオコーディング
+            geocoder.geocode({ location: itemLocation }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    const addressComponents = results[0].address_components;
+        
+                    // 住所の各部分を分類
+                    const addressParts = {
+                        administrative_area_level_1: "", // 都道府県
+                        locality: "",                   // 市区町村
+                        sublocality_level_1: "",        // 区
+                        sublocality_level_2: "",        // 町
+                    };
+        
+                    // 各部分を取得
+                    addressComponents.forEach(component => {
+                        if (component.types.includes("administrative_area_level_1")) {
+                            addressParts.administrative_area_level_1 = component.long_name;
+                        } else if (component.types.includes("locality")) {
+                            addressParts.locality = component.long_name;
+                        } else if (component.types.includes("sublocality_level_1")) {
+                            addressParts.sublocality_level_1 = component.long_name;
+                        } else if (component.types.includes("sublocality_level_2")) {
+                            addressParts.sublocality_level_2 = component.long_name;
+                        }
+                    });
+        
+                    // 必要な順序で住所を構築
+                    const formattedAddress = [
+                        addressParts.administrative_area_level_1,
+                        addressParts.locality,
+                        addressParts.sublocality_level_1,
+                        addressParts.sublocality_level_2,
+                    ].filter(Boolean).join(" ");
+        
+                    // フォーマットされた住所を表示
+                    const addressElement = document.getElementById("address");
+                    addressElement.innerText = formattedAddress;
+                } else {
+                    console.error("住所を取得できませんでした:", status);
+                }
+            });
+
+    // 現在地取得処理
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                currentLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                const currentLocationMarker = new google.maps.Marker({
+                    position: currentLocation,
+                    map: map,
+                    title: '現在地',
+                    label: {
+                        text: '現在地',
+                        color: '#000000',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                    }
+                });
+
+                
+
+                const distance = calculateDistance(
+                    currentLocation.lat,
+                    currentLocation.lng,
+                    itemLocation.lat,
+                    itemLocation.lng
+                );
+                
+                document.getElementById("distance").innerText = 
+                        distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`;
+            },
+            error => {
+                console.error("現在地を取得できませんでした:", error);
+                document.getElementById("distance").innerText = "現在地を取得できません";
             }
-        });
-    }
-    
-    function addMarker(position, label) {
-        const marker = new google.maps.Marker({
-            position: position,
-            map: map,
-            label: label
-        });
-        markers.push(marker); // マーカーをリストに追加
-    }
-    
-    function clearMarkers() {
-        // すべてのマーカーを削除
-        for (const marker of markers) {
-            marker.setMap(null);
-        }
-        markers = []; // リストをリセット
-    }
-    
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000;
-        const toRad = x => (x * Math.PI) / 180;
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return Math.round(R * c);
-    }
-    
-    function goBack() {
-        window.history.back();
+        );
+    } else {
+        document.getElementById("distance").innerText = "ブラウザが現在地をサポートしていません";
     }
 
+    // 「マップで確認する」ボタンの動作
+    document.getElementById("open-map").addEventListener("click", () => {
+        if (currentLocation) {
+            const url = `https://www.google.com/maps?saddr=${currentLocation.lat},${currentLocation.lng}&daddr=${itemLocation.lat},${itemLocation.lng}`;
+            window.open(url, '_blank');
+        } else {
+            alert("現在地が取得できませんでした。");
+        }
+    });
+}
+
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // 地球の半径 (メートル)
+            const toRad = x => (x * Math.PI) / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return Math.round(R * c); // 距離を丸める
+        }
+
+        function goBack() {
+            window.history.back();
+        }
     </script>
 </body>
-
 </html>
