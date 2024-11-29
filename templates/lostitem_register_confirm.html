@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>落とし物登録確認</title>
+</head>
+<body>
+<h1>落とし物登録確認</h1>
+<p><strong>{{ image }}</strong></p>
+<p><strong>{{ image_url }}</strong></p>
+<p><strong>{{ latitude }}</strong></p>
+<p><strong>{{ longitude }}</strong></p>
+<p><strong>{{ date_time }}</strong></p>
+<p><strong>{{ prefecture }}</strong></p>
+<p><strong>{{ comment }}</strong></p>
+<p><strong>{{ product }}</strong></p>
+
+<form method="post" action="{% url 'lostitem_register_confirm' %}">
+  {% csrf_token %}
+  <input type="hidden" name="nickname" value="{{ request.session.nickname }}">
+  <input type="hidden" name="email" value="{{ request.session.email }}">
+  <input type="hidden" name="image" value="{{ image }}">
+  <input type="hidden" name="image_url" value="{{ image_url }}">
+  <input type="hidden" name="latitude" value="{{ latitude }}">
+  <input type="hidden" name="longitude" value="{{ longitude }}">
+  <input type="hidden" name="date_time" value="{{ date_time }}">
+  <input type="hidden" name="prefecture" value="{{ prefecture }}">
+  <input type="hidden" name="comment" value="{{ comment }}">
+  <input type="hidden" name="product" value="{{ product }}">
+  <input type="submit" value="登録する">
+</form>
+<a href="{% url 'lostitem_register' %}">戻る</a>
+</body>
+</html>

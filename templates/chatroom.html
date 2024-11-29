@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat with {{ user2.username }}</title>
+</head>
+<body>
+    <h1>Chat with {{ user2.username }}</h1>
+    
+    <div id="messages">
+        {% for message in messages %}
+            <p><strong>{{ message.sender.username }}:</strong> {{ message.text }} <small>{{ message.timestamp }}</small></p>
+        {% endfor %}
+    </div>
+
+    <form method="post" action="{% url 'send_message' chatroom.id %}">
+        {% csrf_token %}
+        <textarea name="text" rows="3" cols="40" required></textarea>
+        <button type="submit">Send</button>
+    </form>
+</body>
+</html>

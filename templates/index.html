@@ -7,11 +7,22 @@
 <body>
   <h1>落とし物捜索システム</h1>
   <p>システム作るよ〜ん</p>
-  <ul>
-    <li><a href="{% url 'map' %}">マップ検索</a></li>
-    <li><a href="{% url 'register' %}">登録</a></li>
-    <li><a href="{% url 'chat' %}">チャット</a></li>
-  </ul>
+  {% if request.session.nickname %}
+    <p>おかえりなさい、{{ request.session.nickname }}さん</p>
+    <ul>
+      <li><a href="{% url 'map' %}">マップ検索</a></li>
+      <li><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
+      <li><a href="{% url 'chat_room' user_id=request.session.nickname %}">チャット</a></li> 
+      <li><a href="{% url 'logout' %}">ログアウト</a></li>
+    </ul>
+  {% else %}
+    <p>ようこそ、ゲストさん</p>
+    <ul>
+      <li><a href="{% url 'map' %}">マップ検索</a></li>
+      <li><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
+      <li><a href="{% url 'login' %}">ログイン/ユーザー登録</a></li>
+    </ul>
+  {% endif %}
   
   <a href="{% url 'notice' %}">通知</a>
 

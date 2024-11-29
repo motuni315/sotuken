@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>落とし物登録</title>
+</head>
+<body>
+  <h1>落とし物登録</h1>
+  
+  <p><strong>{{ request.session.nickname }}</strong></p>
+  
+  <form method="post" action="{% url 'lostitem_register' %}">
+    {% csrf_token %}
+    <label for="image">画像：</label>
+    <input type="text" id="image" name="image"><br>
+    
+    <label for="image_url">画像URL：</label>
+    <input type="text" id="image_url" name="image_url"><br>
+    
+    <p>緯度: <span id="latitude"></span></p>
+    <p>経度: <span id="longitude"></span></p>
+    <p>日時: <span id="current_date"></span></p>
+    
+    <!-- 隠しフィールドを追加して緯度・経度・日時を送信 -->
+    <input type="hidden" id="latitude_field" name="latitude">
+    <input type="hidden" id="longitude_field" name="longitude">
+    <input type="hidden" id="date_time_field" name="date_time">
+    
+    <label for="prefecture">県名：</label>
+    <input type="text" id="prefecture" name="prefecture"><br>
+    
+    <label for="comment">コメント：</label>
+    <input type="text" id="comment" name="comment" placeholder="例：黒い財布を駅で見つけました。"><br>
+    
+    <label for="product">品名：</label>
+    <input type="text" id="product" name="product"><br>
+    
+    <input type="submit" value="登録確認"><br>
+    <a href="{% url 'index' %}">戻る</a>
+  </form>
+  
+<script>
+  // 現在地を取得して緯度・経度に設定する
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        document.getElementById('latitude').innerText = latitude;
+        document.getElementById('longitude').innerText = longitude;
+        
+        // 隠しフィールドに緯度と経度をセット
+        document.getElementById('latitude_field').value = latitude;
+        document.getElementById('longitude_field').value = longitude;
+      },
+      (error) => {
+        console.error('現在地を取得できませんでした:', error.message);
+        alert('現在地の取得に失敗しました。位置情報サービスを有効にしてください。');
+      }
+    );
+  } else {
+    alert('このブラウザでは位置情報がサポートされていません。');
+  }
+
+  // 現在の日時を取得して設定する
+  function setDate() {
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+    document.getElementById('current_date').innerText = formattedDate;
+    
+    // 隠しフィールドに日時をセット
+    const formattedDateTime = now.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm" 形式
+    document.getElementById('date_time_field').value = formattedDateTime;
+  }
+
+  // ページロード時に日時を設定
+  window.onload = setDate;
+</script>
+
+</body>
+</html>
