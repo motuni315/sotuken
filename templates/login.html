@@ -16,11 +16,11 @@
             <input type="password" id="password" name="password">
           <input type="submit" value="送信">
         </form>
-        
+
          {% if error %}
             <p style="color: red;">{{ error }}</p>  <!-- エラーメッセージを表示 -->
         {% endif %}
-        
+
         <p>まだ登録していない方は<a href="{% url 'User_register' %}">こちら</a></p>
 
 </body>

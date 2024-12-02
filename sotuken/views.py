@@ -2,7 +2,7 @@ from datetime import datetime
 from urllib import request
 
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, Http404
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import LostItem, User, ChatRoom, Message
 
@@ -170,34 +170,131 @@ def logout(request):
   return redirect('index')  # ログインページにリダイレクト
 
 
-@login_required
-def chat_room(request, user_id):
-  user2 = get_object_or_404(User, id=user_id)
-  user1 = request.user
-
-  # チャットルームが存在するか確認し、なければ作成
-  chatroom, created = ChatRoom.objects.get_or_create(
-    user1=min(user1, user2, key=lambda x: x.id),  # user1はidが小さい方
-    user2=max(user1, user2, key=lambda x: x.id)  # user2はidが大きい方
-  )
-
-  messages = chatroom.messages.order_by('timestamp')
-  return render(request, 'chatroom.html', {'chatroom': chatroom, 'messages': messages, 'user2': user2})
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import User, ChatRoom, Message
 
 
-@login_required
+def chat_room_list(request):
+  # セッションからログインしているユーザーのnicknameを取得
+  user1_nickname = request.session.get('nickname')
+
+  # nicknameに基づいてUserオブジェクトを取得
+  user1 = get_object_or_404(User, nickname=user1_nickname)
+
+  # 過去にチャットしたチャットルームを検索（user1がuser2側にいる場合も考慮）
+  past_chat_rooms = ChatRoom.objects.filter(user1=user1) | ChatRoom.objects.filter(user2=user1)
+
+  past_users = []
+
+  # 過去にチャットしたユーザーとそのチャットルームIDをリストに追加
+  for chatroom in past_chat_rooms:
+    # user1以外のユーザー（user2）を取得
+    other_user = chatroom.user2 if chatroom.user1 == user1 else chatroom.user1
+    past_users.append({
+      'nickname': other_user.nickname,
+      'chatroom_id': chatroom.id  # チャットルームIDを追加
+    })
+
+  # 結果を渡してチャットルーム画面を表示
+  return render(request, 'past_chatroom_list.html', {
+    'past_users': past_users
+  })
+
+
+def chat_room_check(request):
+    user1_nickname = request.session.get('nickname')
+    user2_nickname = request.GET.get('register')
+
+    # ユーザーオブジェクトを取得
+    user1 = User.objects.filter(nickname=user1_nickname).first()
+    user2 = User.objects.filter(nickname=user2_nickname).first()
+
+    if user1 and user2:
+      # すでにチャットルームが存在するか検索
+      chat_room = ChatRoom.objects.filter(user1=user1, user2=user2).first()
+      if chat_room:
+        return JsonResponse({'chatRoomId': chat_room.id})
+      else:
+        return JsonResponse({'chatRoomId': None})
+    return JsonResponse({'chatRoomId': None})
+
+
+def chat_room_create(request):
+  # クエリパラメータからユーザー1とユーザー2を取得
+  user1_nickname = request.session.get('nickname')
+  user2_nickname = request.GET.get('register')
+
+  if not user1_nickname or not user2_nickname:
+    # 必要なパラメータが不足している場合、エラーメッセージを表示
+    return HttpResponse("ユーザー情報が不足しています。", status=400)
+
+  # チャットルームが既に存在するか確認
+  existing_chat_room = ChatRoom.objects.filter(user1__nickname=user1_nickname, user2__nickname=user2_nickname).first()
+
+  if existing_chat_room:
+    # 既存のチャットルームが見つかった場合
+    return redirect('chat-room', chat_room_id=existing_chat_room.id)
+  else:
+    # 新しいチャットルームを作成
+    user1 = User.objects.get(nickname=user1_nickname)
+    user2 = User.objects.get(nickname=user2_nickname)
+
+    new_chat_room = ChatRoom.objects.create(user1=user1, user2=user2)
+
+    # 新しいチャットルームの詳細ページにリダイレクト
+    return redirect('chat-room', chat_room_id=new_chat_room.id)
+
+
+def chat_room(request, chat_room_id):
+  # チャットルームを取得
+  chatroom = get_object_or_404(ChatRoom, id=chat_room_id)
+
+  # 現在ログインしているユーザーを取得
+  user = request.session.get('nickname')
+  user1 = get_object_or_404(User, nickname=user)
+
+  # チャットルーム内で他のユーザーをユーザー2として設定
+  # (ユーザー1以外のユーザーがユーザー2に設定される想定)
+  user2 = chatroom.user1 if chatroom.user2 == user1 else chatroom.user2
+
+  # チャットルームのメッセージを取得
+  messages = chatroom.messages.all().order_by('timestamp')
+
+  return render(request, 'chatroom.html', {
+    'chatroom': chatroom,
+    'messages': messages,
+    'user1': user1,
+    'user2': user2,
+  })
+
+
 def send_message(request, chatroom_id):
+  chatroom = get_object_or_404(ChatRoom, id=chatroom_id)
+  sender_nickname = request.session.get('nickname')
+  sender = User.objects.get(nickname=sender_nickname)
+
+  # POSTリクエストが送信された場合
   if request.method == 'POST':
-    chatroom = get_object_or_404(ChatRoom, id=chatroom_id)
-    text = request.POST.get('text')
+    text = request.POST.get('text')  # フォームから送信されたテキスト
 
     if text:
+      # メッセージをデータベースに保存
       Message.objects.create(
         chatroom=chatroom,
-        sender=request.user,
+        sender=sender,
         text=text
       )
-    return redirect('chat_room', user_id=chatroom.user2.id if chatroom.user1 == request.user else chatroom.user1.id)
+
+      # メッセージ送信後、適切なチャットルームにリダイレクト
+      # チャットルーム内のユーザーに基づきリダイレクト先を決定
+      recipient_nickname = chatroom.user2.nickname if chatroom.user1 == request.user else chatroom.user1.nickname
+      return redirect('chat-room', chat_room_id=chatroom.id)  # チャットルームにリダイレクト
+
+  # GETリクエストの場合（直接ページにアクセスした場合）はフォームを表示
+  return render(request, 'chatroom.html', {
+    'chatroom': chatroom,
+    'messages': chatroom.messages.all().order_by('timestamp'),  # チャットメッセージを順番に表示
+  })
 
 
 def lostitem_register(request):
@@ -254,4 +351,4 @@ def lostitem_register_confirm(request):
     )
     lostitem.save()
 
-  return render(request,'lostitem_register_complete.html')
+  return render(request, 'lostitem_register_complete.html')
