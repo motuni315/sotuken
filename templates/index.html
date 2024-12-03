@@ -9,7 +9,7 @@
   <p>システム作るよ〜ん</p>
   
   {% if request.session.nickname %}
-    <p>おかえりなさい、{{ request.session.nickname }}さん</p>
+    <p>おかえりなさい、{{ request.session.nickname }} さん</p>
     <ul>
       <li><a href="{% url 'map' %}">マップ検索</a></li>
       <li><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
@@ -17,7 +17,7 @@
       <li><a href="{% url 'logout' %}">ログアウト</a></li>
     </ul>
   {% else %}
-    <p>ようこそ、ゲストさん</p>
+    <p>ようこそ、guest さん</p>
     <ul>
       <li><a href="{% url 'map' %}">マップ検索</a></li>
       <li><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>

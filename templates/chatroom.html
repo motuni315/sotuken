@@ -5,34 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>チャットルーム</title>
     <style>
-        /* 全体のレイアウト */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f3f3f3;
+            background-color: #f9f9f9;
         }
 
         .chat-container {
             width: 100%;
             max-width: 600px;
-            margin: 0 auto;
+            margin: 20px auto;
             background-color: #fff;
             border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            height: 95vh;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-        /* チャットメッセージ領域 */
         #chat-messages {
             flex-grow: 1;
             overflow-y: auto;
             padding: 20px;
-            margin-bottom: 70px;
-            display: flex;
-            flex-direction: column;
         }
 
         .message {
@@ -49,7 +44,6 @@
             word-wrap: break-word;
         }
 
-        /* 相手のメッセージ */
         .message.user2 {
             justify-content: flex-start;
         }
@@ -58,7 +52,6 @@
             background-color: #f1f1f1;
         }
 
-        /* 自分のメッセージ */
         .message.user1 {
             justify-content: flex-end;
         }
@@ -67,29 +60,32 @@
             background-color: #dcf8c6;
         }
 
-        /* チャットフォームのスタイル */
         #chat-form {
-            position: fixed;
-            bottom: 10px;
-            width: 100%;
-            padding: 10px;
+            bottom: 0;
+            left: 0;
+            width: auto;
+            max-width: 600px; /* チャット内容と同じ幅 */
+            padding: 10px 15px;
+            margin: 0 ; /* 中央揃え */
             background-color: #fff;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
-            gap: 10px; /* テキストエリアとボタンの間の余白 */
+            gap: 10px;
         }
-
+        
         #chat-form textarea {
-            flex-grow: 1;
+            flex-grow: 1; /* 横幅をできるだけ広げる */
             padding: 10px;
             border-radius: 20px;
-            border: 1px solid #ddd;
+            border: 1px solid #DDD;
             font-size: 14px;
             resize: none;
+            width: 100%; /* 親要素の幅に合わせる */
+            margin-right: 10px; /* ボタンとの間隔調整 */
+            box-sizing: border-box; /* paddingやborderを含めたサイズ設定 */
         }
 
+        
         #chat-form button {
             background-color: #34b7f1;
             color: white;
@@ -98,30 +94,31 @@
             border-radius: 20px;
             font-size: 14px;
             cursor: pointer;
-            flex-shrink: 0; /* ボタンのサイズを固定 */
+            flex-shrink: 0; /* ボタンの幅を固定 */
+            margin-left: auto; /* 右端に配置 */
         }
 
         #chat-form button:hover {
             background-color: #128c7e;
         }
 
-        /* ヘッダー */
         .header {
             background-color: #34b7f1;
             padding: 15px;
             text-align: center;
             color: white;
             font-size: 18px;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
+            
         }
 
         .nav-links {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
             display: flex;
-            justify-content: space-between;
-            padding: 10px;
+            justify-content: center;
             background-color: #fff;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+            padding: 10px 0;
         }
 
         .nav-links a {
@@ -129,14 +126,18 @@
             color: #34b7f1;
             font-size: 14px;
         }
+        
+        #chatForm {
+          width: 100%;
+          display: flex;
+        }
     </style>
 </head>
 <body>
 
     <div class="chat-container">
         <div class="header">
-            <p>チャットルーム</p>
-            <p>ユーザー1: {{ user1.nickname }} | ユーザー2: {{ user2.nickname }}</p>
+            <p>{{ user2.nickname }}</p>
         </div>
 
         <div id="chat-messages">
@@ -151,19 +152,45 @@
                 <p>まだメッセージはありません。</p>
             {% endfor %}
         </div>
-
-        <div id="chat-form">
-            <form method="POST" action="{% url 'send_message' chatroom_id=chatroom.id %}">
+      <div id="chat-form">
+            <form method="POST" action="{% url 'send_message' chatroom_id=chatroom.id %}" id="chatForm">
                 {% csrf_token %}
-                <textarea name="text" placeholder="メッセージを入力..." rows="2"></textarea>
+                <textarea name="text" placeholder="メッセージを入力..." rows="2" id="messageInput"></textarea>
                 <button type="submit">送信</button>
             </form>
         </div>
     </div>
 
-    <div class="nav-links">
+    <!--<div class="nav-links">
         <a href="{% url 'chat_room_list' %}">チャットリストに戻る</a>
-        <a href="{% url 'index' %}">ホームに戻る</a>
-    </div>
+    </div>-->
+
+    <script>
+        let isComposing = false;
+
+        // 変換開始時にフラグを立てる
+        document.getElementById('messageInput').addEventListener('compositionstart', function() {
+            isComposing = true;
+        });
+
+        // 変換確定時にフラグを戻す
+        document.getElementById('messageInput').addEventListener('compositionend', function() {
+            isComposing = false;
+        });
+
+        // エンターキーで送信をトリガーする
+        document.getElementById('messageInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !isComposing) {
+                event.preventDefault(); // 改行を防ぐ
+                document.getElementById('chatForm').submit(); // フォームを送信
+            }
+        });
+
+        // ページ読み込み時にスクロール位置を最下部に設定
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+    </script>
 </body>
 </html>

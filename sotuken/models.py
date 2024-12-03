@@ -3,25 +3,24 @@ from django.db import models
 
 
 class LostItem(models.Model):
-    image = models.ImageField(upload_to='lost_items/', blank=True, null=True)  # 画像をS3にアップロード
-    image_url = models.URLField(blank=True, null=True)  # S3の画像URLを保存
-    product = models.TextField(max_length=50,blank=True)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)
-    date_time = models.DateTimeField(auto_now_add=True)
-    prefecture = models.CharField(max_length=100, blank=True)
-    comment = models.CharField(max_length=256, blank=True, null=True)
-    nickname = models.CharField(max_length=50)
-    email = models.EmailField()
+  image = models.ImageField(upload_to='lost_items/', blank=True, null=True)  # 画像をS3にアップロード
+  image_url = models.URLField(blank=True, null=True)  # S3の画像URLを保存
+  product = models.TextField(max_length=50, blank=True)
+  latitude = models.DecimalField(max_digits=9, decimal_places=6)
+  longitude = models.DecimalField(max_digits=9, decimal_places=6)
+  date_time = models.DateTimeField(auto_now_add=True)
+  prefecture = models.CharField(max_length=100, blank=True)
+  comment = models.CharField(max_length=256, blank=True, null=True)
+  nickname = models.CharField(max_length=50)
 
 
 class User(models.Model):
-      nickname = models.CharField(max_length=50)
-      email = models.EmailField(unique=True)
-      password = models.CharField(max_length=128)  # Djangoの暗号化パスワードに対応
+  nickname = models.CharField(max_length=50)
+  email = models.EmailField(unique=True)
+  password = models.CharField(max_length=128)  # Djangoの暗号化パスワードに対応
 
-      def __str__(self):
-        return self.nickname
+  def __str__(self):
+    return self.nickname
 
 
 class ChatRoom(models.Model):

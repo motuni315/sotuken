@@ -4,6 +4,7 @@ from .models import LostItem, User, ChatRoom, Message
 from django.db.models import Q
 import re
 
+
 # Create your views here.
 
 
@@ -89,7 +90,12 @@ def search_items(request):
 
 def item_detail(request, item_id):
   item = get_object_or_404(LostItem, id=item_id)
-  user = request.session.get('nickname')
+  user = None  # user 変数を初期化
+  user_nickname = request.session.get('nickname')
+
+  if user_nickname:
+    user = User.objects.get(nickname=user_nickname)
+
   return render(request, 'item_detail.html', {'item': item, 'user': user})
 
 
@@ -225,6 +231,10 @@ def chat_room_check(request):
   user1 = User.objects.filter(nickname=user1_nickname).first()
   user2 = User.objects.filter(nickname=user2_nickname).first()
 
+  # アイテム登録者が'guest'の場合、チャットルーム作成不可
+  if user2 and user2.nickname == 'guest':
+    return JsonResponse({'error': 'アイテム登録者がゲストのため、チャットルームは作成できません。'})
+
   if user1 == user2:
     return JsonResponse({'error': 'ログインユーザーと登録者が一致しているため、チャットルームは作成できません。'})
 
@@ -237,6 +247,9 @@ def chat_room_check(request):
       return JsonResponse({'chatRoomId': chat_room.id})
     else:
       return JsonResponse({'chatRoomId': None})
+
+  if user1 is None:
+    return JsonResponse({'error':'ゲストユーザーのため、チャット機能がご利用できません。'})
 
   return JsonResponse({'error': 'ユーザー情報が不正です。'})
 
@@ -357,7 +370,10 @@ def lostitem_register_confirm(request):
     comment = request.POST.get('comment')
     product = request.POST.get('product')
     nickname = request.session.get('nickname')
-    email = request.session.get('email')
+
+    # nicknameが'null'またはNoneの場合は"guest"に設定
+    if nickname == 'null' or nickname is None:
+      nickname = 'guest'
 
     lostitem = LostItem.objects.create(
       image=image,
@@ -369,7 +385,6 @@ def lostitem_register_confirm(request):
       comment=comment,
       product=product,
       nickname=nickname,
-      email=email
     )
     lostitem.save()
 

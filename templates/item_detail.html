@@ -42,6 +42,7 @@
             <p><strong>登録者：</strong>{{ item.nickname }}
               <button id="start-chat" onclick="startChat()">チャット・質問を行う</button>
             </p>
+            {% if user.nickname == None %}<p>※チャット機能はユーザー登録するとご利用いただけます</p>{% endif %}
         </div>
         <div>
             <div id="map"></div>
@@ -50,22 +51,31 @@
 
     <!-- マップで確認するボタン -->
     <div style="margin-top: 20px;">
-        
+
     </div>
-    
+
     <!-- 戻るボタン -->
     <button onclick="goBack()" style="margin-top: 20px;">戻る</button>
 
     <script>
         let map;
         let currentLocation;
+        
+        // ユーザーがログインしていない場合にチャットボタンを無効化
+        const userNickname = "{{ user.nickname }}";
+        const startChatButton = document.getElementById("start-chat");
+        
+        if (!userNickname) {
+            startChatButton.disabled = true;
+            startChatButton.style.cursor = "not-allowed";
+        }
 
         function initMap() {
             const itemLocation = {
                 lat: {{ item.latitude }},
                 lng: {{ item.longitude }}
             };
-        
+
             // 地図を表示
             map = new google.maps.Map(document.getElementById('map'), {
                 center: itemLocation,
@@ -77,21 +87,21 @@
                     position: google.maps.ControlPosition.TOP_RIGHT
                 }
             });
-        
+
             const itemMarker = new google.maps.Marker({
                 position: itemLocation,
                 map: map,
                 title: '{{ item.product }}'
             });
-        
+
             // Geocoderインスタンスを作成
             const geocoder = new google.maps.Geocoder();
-        
+
             // アイテムの位置を逆ジオコーディング
             geocoder.geocode({ location: itemLocation }, (results, status) => {
                 if (status === "OK" && results[0]) {
                     const addressComponents = results[0].address_components;
-        
+
                     // 住所の各部分を分類
                     const addressParts = {
                         administrative_area_level_1: "", // 都道府県
@@ -99,7 +109,7 @@
                         sublocality_level_1: "",        // 区
                         sublocality_level_2: "",        // 町
                     };
-        
+
                     // 各部分を取得
                     addressComponents.forEach(component => {
                         if (component.types.includes("administrative_area_level_1")) {
@@ -112,7 +122,7 @@
                             addressParts.sublocality_level_2 = component.long_name;
                         }
                     });
-        
+
                     // 必要な順序で住所を構築
                     const formattedAddress = [
                         addressParts.administrative_area_level_1,
@@ -120,7 +130,7 @@
                         addressParts.sublocality_level_1,
                         addressParts.sublocality_level_2,
                     ].filter(Boolean).join(" ");
-        
+
                     // フォーマットされた住所を表示
                     const addressElement = document.getElementById("address");
                     addressElement.innerText = formattedAddress;
@@ -150,7 +160,7 @@
                     }
                 });
 
-                
+
 
                 const distance = calculateDistance(
                     currentLocation.lat,
@@ -158,8 +168,8 @@
                     itemLocation.lat,
                     itemLocation.lng
                 );
-                
-                document.getElementById("distance").innerText = 
+
+                document.getElementById("distance").innerText =
                         distance >= 1000 ? `${(distance / 1000).toFixed(1)}km` : `${distance}m`;
             },
             error => {
@@ -199,48 +209,48 @@
         function goBack() {
             window.history.back();
         }
-        
+
         function startChat() {
-    const itemNickname = "{{ item.nickname }}"; // 登録者のnickname
-    const userNickname = "{{ user.nickname }}"; // ログインユーザーのnickname
-
-    fetch(`/chat-room_check/?register=${itemNickname}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                // エラーがある場合、表示する
-                const errorMessage = document.createElement('p');
-                errorMessage.style.color = 'red';
-                errorMessage.innerText = data.error;
-
-                const buttonElement = document.getElementById('start-chat');
-                // 既にエラーメッセージが表示されていない場合のみ追加
-                if (!buttonElement.parentNode.querySelector('p')) {
-                    buttonElement.parentNode.appendChild(errorMessage);
-                }
-
-                buttonElement.disabled = true; // ボタンを無効化
-                return; // 処理終了
-            }
-
-            if (data.chatRoomId) {
-                // 既存のチャットルームが見つかった場合
-                alert('既存のチャットルームに入室します');
-                window.location.href = `/chat-room/${data.chatRoomId}/`;
-            } else {
-                // チャットルームが見つからない場合、新規作成
-                alert('新しいチャットルームを作成します');
-                window.location.href = `/chat-room_create/?register=${itemNickname}`;
-            }
-        })
-        .catch(error => {
-            console.error("エラー:", error);
-            alert('エラーが発生しました。');
-        });
-}
-
-
+            const itemNickname = "{{ item.nickname }}"; // 登録者のnickname
+            const userNickname = "{{ user.nickname }}"; // ログインユーザーのnickname
         
+            fetch(`/chat-room_check/?register=${itemNickname}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        // エラーがある場合、表示する
+                        const errorMessage = document.createElement('p');
+                        errorMessage.style.color = 'red';
+                        errorMessage.innerText = data.error;
+        
+                        const buttonElement = document.getElementById('start-chat');
+                        // 既にエラーメッセージが表示されていない場合のみ追加
+                        if (!buttonElement.parentNode.querySelector('p')) {
+                            buttonElement.parentNode.appendChild(errorMessage);
+                        }
+        
+                        buttonElement.disabled = true; // ボタンを無効化
+                        return; // 処理終了
+                    }
+        
+                    if (data.chatRoomId) {
+                        // 既存のチャットルームが見つかった場合
+                        alert('既存のチャットルームに入室します');
+                        window.location.href = `/chat-room/${data.chatRoomId}/`;
+                    } else {
+                        // チャットルームが見つからない場合、新規作成
+                        alert('新しいチャットルームを作成します');
+                        window.location.href = `/chat-room_create/?register=${itemNickname}`;
+                    }
+                })
+                .catch(error => {
+                    console.error("エラー:", error);
+                    alert('エラーが発生しました。');
+                });
+        }
+
+
+
 
     </script>
 </body>
