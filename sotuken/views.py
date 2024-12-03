@@ -1,11 +1,8 @@
 from datetime import datetime
-from urllib import request
-
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, JsonResponse, Http404
-from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse, JsonResponse
 from .models import LostItem, User, ChatRoom, Message
-
+from django.db.models import Q
+import re
 
 # Create your views here.
 
@@ -92,7 +89,8 @@ def search_items(request):
 
 def item_detail(request, item_id):
   item = get_object_or_404(LostItem, id=item_id)
-  return render(request, 'item_detail.html', {'item': item})
+  user = request.session.get('nickname')
+  return render(request, 'item_detail.html', {'item': item, 'user': user})
 
 
 def login(request):
@@ -124,23 +122,42 @@ def login(request):
 def User_register(request):
   if request.method == 'GET':
     return render(request, 'User_register.html')
+
   elif request.method == 'POST':
     nickname = request.POST.get('nickname')
     email = request.POST.get('email')
     password1 = request.POST.get('password1')
     password2 = request.POST.get('password2')
 
+    # メールアドレスの重複チェック
     if User.objects.filter(email=email).exists():
       return render(request, 'User_register.html', {'error': 'このメールアドレスはすでに登録されています'})
-    if password1 == password2:
-      context = {
-        'nickname': nickname,
-        'email': email,
-        'password': password1
-      }
-      return render(request, 'User_register_confirm.html', context)
-    else:
-      return render(request, 'User_register.html', {'error': 'パスワードが異なります'})
+
+    # ニックネームの重複チェック
+    if User.objects.filter(nickname=nickname).exists():
+      return render(request, 'User_register.html', {'error': 'このニックネームはすでに使用されています'})
+
+    # ニックネームの検証（英数字を必ず含む）
+    if not re.match(r'^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]+$', nickname):
+      return render(request, 'User_register.html',
+                    {'error': 'ニックネームは英字と数字をそれぞれ1文字以上含む必要があります'})
+
+    # パスワードの検証（8文字以上で英数字を必須）
+    if len(password1) < 8 or not re.match(r'^(?=.*[a-zA-Z])(?=.*\d).+$', password1):
+      return render(request, 'User_register.html',
+                    {'error': 'パスワードは8文字以上で、英字と数字を必ず含む必要があります'})
+
+    # パスワードの一致確認
+    if password1 != password2:
+      return render(request, 'User_register.html', {'error': 'パスワードが一致しません'})
+
+    # 確認画面へ遷移
+    context = {
+      'nickname': nickname,
+      'email': email,
+      'password': password1,
+    }
+    return render(request, 'User_register_confirm.html', context)
 
 
 def User_register_confirm(request):
@@ -202,21 +219,26 @@ def chat_room_list(request):
 
 
 def chat_room_check(request):
-    user1_nickname = request.session.get('nickname')
-    user2_nickname = request.GET.get('register')
+  user1_nickname = request.session.get('nickname')  # ログイン中のユーザー
+  user2_nickname = request.GET.get('register')  # アイテム登録者
 
-    # ユーザーオブジェクトを取得
-    user1 = User.objects.filter(nickname=user1_nickname).first()
-    user2 = User.objects.filter(nickname=user2_nickname).first()
+  user1 = User.objects.filter(nickname=user1_nickname).first()
+  user2 = User.objects.filter(nickname=user2_nickname).first()
 
-    if user1 and user2:
-      # すでにチャットルームが存在するか検索
-      chat_room = ChatRoom.objects.filter(user1=user1, user2=user2).first()
-      if chat_room:
-        return JsonResponse({'chatRoomId': chat_room.id})
-      else:
-        return JsonResponse({'chatRoomId': None})
-    return JsonResponse({'chatRoomId': None})
+  if user1 == user2:
+    return JsonResponse({'error': 'ログインユーザーと登録者が一致しているため、チャットルームは作成できません。'})
+
+  if user1 and user2:
+    chat_room = ChatRoom.objects.filter(
+      Q(user1=user1, user2=user2) | Q(user1=user2, user2=user1)
+    ).first()
+
+    if chat_room:
+      return JsonResponse({'chatRoomId': chat_room.id})
+    else:
+      return JsonResponse({'chatRoomId': None})
+
+  return JsonResponse({'error': 'ユーザー情報が不正です。'})
 
 
 def chat_room_create(request):

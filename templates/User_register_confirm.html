@@ -16,5 +16,8 @@
   <input type="hidden" name="password" value="{{ password }}">
   <input type="submit" value="登録">
 </form>
+<form method="get" action="{% url 'User_register' %}" style="display: inline;">
+  <button type="submit">戻る</button>
+</form>
 </body>
 </html>

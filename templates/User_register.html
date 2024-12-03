@@ -12,7 +12,7 @@
         <h1>ユーザー登録</h1>
         <form method="post" action="{% url 'User_register' %}">
           {% csrf_token %}
-          <label for="nickname">ニックネーム：</label>
+          <label for="nickname">ユーザー名：</label>
           <input type="text" id="nickname" name="nickname" required><br>
           <label for="email">メールアドレス：</label>
           <input type="email" id="email" name="email" required><br>
@@ -32,11 +32,12 @@
               👁️
             </button>
           </div><br>
-          <input type="submit" value="登録確認">
+          
           
           {% if error %}
             <p style="color: red;">{{ error }}</p>  <!-- エラーメッセージを表示 -->
           {% endif %}
+          <input type="submit" value="登録確認">
         </form>
 
         

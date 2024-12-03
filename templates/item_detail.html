@@ -40,7 +40,7 @@
             <p><strong>現在地からの距離：</strong> <span id="distance">計算中...</span></p>
             <p><strong>経路情報：</strong><button id="open-map">マップで確認する</button></p>
             <p><strong>登録者：</strong>{{ item.nickname }}
-                <button id="start-chat" onclick="startChat()">チャット・質問を行う</button>
+              <button id="start-chat" onclick="startChat()">チャット・質問を行う</button>
             </p>
         </div>
         <div>
@@ -201,34 +201,45 @@
         }
         
         function startChat() {
-            const itemNickname = "{{ item.nickname }}"; // 登録者のnickname
-            const userNickname = "{{ user.nickname }}"; // ログインユーザーのnickname
-          
-            if (userNickname === itemNickname) {
-                // ログインユーザーと登録者が同じ場合は、ボタンを無効化
-                alert('自分の落とし物にはチャットできません。');
-                return; // 処理を終了
+    const itemNickname = "{{ item.nickname }}"; // 登録者のnickname
+    const userNickname = "{{ user.nickname }}"; // ログインユーザーのnickname
+
+    fetch(`/chat-room_check/?register=${itemNickname}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                // エラーがある場合、表示する
+                const errorMessage = document.createElement('p');
+                errorMessage.style.color = 'red';
+                errorMessage.innerText = data.error;
+
+                const buttonElement = document.getElementById('start-chat');
+                // 既にエラーメッセージが表示されていない場合のみ追加
+                if (!buttonElement.parentNode.querySelector('p')) {
+                    buttonElement.parentNode.appendChild(errorMessage);
+                }
+
+                buttonElement.disabled = true; // ボタンを無効化
+                return; // 処理終了
             }
-        
-            // チャットルームが存在するか確認
-            fetch(`/chat-room_check/?register=${itemNickname}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.chatRoomId) {
-                        // 既存のチャットルームが見つかった場合
-                        alert('既存のチャットルームに入室します');
-                        window.location.href = `/chat-room/${data.chatRoomId}/`;
-                    } else {
-                        // チャットルームが見つからない場合、新規作成
-                        alert('新しいチャットルームを作成します');
-                        window.location.href = `/chat-room_create/?register=${itemNickname}`;
-                    }
-                })
-                .catch(error => {
-                    console.error("エラー:", error);
-                    alert('エラーが発生しました。');
-                });
-        }
+
+            if (data.chatRoomId) {
+                // 既存のチャットルームが見つかった場合
+                alert('既存のチャットルームに入室します');
+                window.location.href = `/chat-room/${data.chatRoomId}/`;
+            } else {
+                // チャットルームが見つからない場合、新規作成
+                alert('新しいチャットルームを作成します');
+                window.location.href = `/chat-room_create/?register=${itemNickname}`;
+            }
+        })
+        .catch(error => {
+            console.error("エラー:", error);
+            alert('エラーが発生しました。');
+        });
+}
+
+
         
 
     </script>
