@@ -1,8 +1,12 @@
 from datetime import datetime
+
 from django.http import HttpResponse, JsonResponse
 from .models import LostItem, User, ChatRoom, Message
 from django.db.models import Q
 import re
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.core.mail import send_mail
 
 
 # Create your views here.
@@ -232,8 +236,8 @@ def chat_room_check(request):
   user2 = User.objects.filter(nickname=user2_nickname).first()
 
   # アイテム登録者が'guest'の場合、チャットルーム作成不可
-  if user2 and user2.nickname == 'guest':
-    return JsonResponse({'error': 'アイテム登録者がゲストのため、チャットルームは作成できません。'})
+  if user2_nickname == 'guest':
+    return JsonResponse({'error': '登録者がゲストユーザーなのでチャットができません。'})
 
   if user1 == user2:
     return JsonResponse({'error': 'ログインユーザーと登録者が一致しているため、チャットルームは作成できません。'})
@@ -249,7 +253,7 @@ def chat_room_check(request):
       return JsonResponse({'chatRoomId': None})
 
   if user1 is None:
-    return JsonResponse({'error':'ゲストユーザーのため、チャット機能がご利用できません。'})
+    return JsonResponse({'error': 'ゲストユーザーのため、チャット機能がご利用できません。'})
 
   return JsonResponse({'error': 'ユーザー情報が不正です。'})
 
@@ -258,6 +262,10 @@ def chat_room_create(request):
   # クエリパラメータからユーザー1とユーザー2を取得
   user1_nickname = request.session.get('nickname')
   user2_nickname = request.GET.get('register')
+  item_id = request.POST.get('itemId')
+
+  if user2_nickname == 'guest':
+    return HttpResponse("登録者がゲストユーザーのためチャットができません。",status=400)
 
   if not user1_nickname or not user2_nickname:
     # 必要なパラメータが不足している場合、エラーメッセージを表示
@@ -268,7 +276,7 @@ def chat_room_create(request):
 
   if existing_chat_room:
     # 既存のチャットルームが見つかった場合
-    return redirect('chat-room', chat_room_id=existing_chat_room.id)
+    return redirect('chat-room', chat_room_id=existing_chat_room.id,item_id=item_id)
   else:
     # 新しいチャットルームを作成
     user1 = User.objects.get(nickname=user1_nickname)
@@ -389,3 +397,19 @@ def lostitem_register_confirm(request):
     lostitem.save()
 
   return render(request, 'lostitem_register_complete.html')
+
+@receiver(post_save, sender=Message)
+def notify_user_on_new_message(sender, instance, created, **kwargs):
+    if created:  # 新しいメッセージが作成された場合のみ通知
+        # 送信者が user1 なら user2 に通知し、逆も同様
+        chatroom = instance.chatroom
+        recipient = chatroom.user2 if instance.sender == chatroom.user1 else chatroom.user1
+
+        if recipient.email:  # メールアドレスが登録されている場合のみ通知
+            send_mail(
+                subject=f"{instance.sender.nickname}からメッセージが届きました",
+                message=f"{instance.sender.nickname}から新しいメッセージが届きました。\n内容: {instance.text}",
+                from_email="doidoiis.sotuken@gmail.com",  # 送信元メールアドレス
+                recipient_list=[recipient.email],
+                fail_silently=False,
+            )

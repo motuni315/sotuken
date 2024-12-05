@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>落とし物捜索システム</title>
+  <style>
+    /* PC (幅が768px以上) の場合は非表示 */
+    @media (min-width: 768px) {
+      .hide-on-pc {
+        display: none;
+      }
+    }
+  </style>
 </head>
 <body>
   <h1>落とし物捜索システム</h1>
@@ -12,7 +20,7 @@
     <p>おかえりなさい、{{ request.session.nickname }} さん</p>
     <ul>
       <li><a href="{% url 'map' %}">マップ検索</a></li>
-      <li><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
+      <li class="hide-on-pc"><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
       <li><a href="{% url 'chat_room_list' %}">チャット</a></li>
       <li><a href="{% url 'logout' %}">ログアウト</a></li>
     </ul>
@@ -20,10 +28,9 @@
     <p>ようこそ、guest さん</p>
     <ul>
       <li><a href="{% url 'map' %}">マップ検索</a></li>
-      <li><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
+      <li class="hide-on-pc"><a href="{% url 'lostitem_register' %}">落とし物登録</a></li>
       <li><a href="{% url 'login' %}">ログイン/ユーザー登録</a></li>
     </ul>
   {% endif %}
-
 </body>
 </html>

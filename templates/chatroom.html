@@ -11,7 +11,7 @@
             padding: 0;
             background-color: #f9f9f9;
         }
-        
+
         .back-button {
         background: none;
         border: none;
@@ -20,7 +20,7 @@
         cursor: pointer;
         margin-right: 0;
         }
-    
+
         .back-button:hover {
             color: #ddd;
         }
@@ -85,7 +85,7 @@
             align-items: center;
             gap: 10px;
         }
-        
+
         #chat-form textarea {
             flex-grow: 1; /* 横幅をできるだけ広げる */
             padding: 10px;
@@ -98,7 +98,7 @@
             box-sizing: border-box; /* paddingやborderを含めたサイズ設定 */
         }
 
-        
+
         #chat-form button {
             background-color: #34b7f1;
             color: white;
@@ -125,7 +125,7 @@
             align-items: center; /* 高さ方向の中央揃え */
             justify-content: space-between; /* 左右に要素を配置 */
         }
-        
+
         .header p {
             margin: 0 auto; /* 左右の自動マージンで中央揃え */
             text-align: center;
@@ -149,7 +149,7 @@
             color: #34b7f1;
             font-size: 14px;
         }
-        
+
         #chatForm {
           width: 100%;
           display: flex;
@@ -215,18 +215,9 @@
             const chatMessages = document.getElementById('chat-messages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
         });
-        
-        document.getElementById('backButton').addEventListener('click', function() {
-        const referrer = document.referrer; // どこから来たかを取得
 
-        if (referrer.includes('item_detail')) {
-            const itemId = "{{ item_id }}"; // テンプレートから `item_id` を取得
-            window.location.href = `/item/${itemId}/`; // `item_detail` にリダイレクト
-        } else if (referrer.includes('past_chatroom_list')) {
-            window.location.href = "{% url 'chat_room_list' %}"; // 適切なURL
-        } else {
-            window.history.back(); // 他のケースでは単純に戻る
-        }
+        document.getElementById('backButton').addEventListener('click', function() {
+        window.location.href = "{% url 'chat_room_list' %}";
     });
     </script>
 </body>
