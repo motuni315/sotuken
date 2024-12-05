@@ -19,7 +19,7 @@
         ul#item-list li {
             margin-bottom: 20px;
             border: 2px solid #ccc;
-            width: 80%;
+            width:  98%;
             padding: 10px;
             border-radius: 8px;
             display: flex; /* 横並びにするためにflexboxを使用 */
@@ -194,30 +194,42 @@
     }
 
     function fetchItems() {
-        const itemName = document.getElementById('item_name').value;
-        const prefecture = document.getElementById('prefecture').value;
-        const startDate = document.getElementById('start_date').value;
-        const endDate = document.getElementById('end_date').value;
+    const itemName = document.getElementById('item_name').value;
+    const prefecture = document.getElementById('prefecture').value;
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
 
-        let url = document.getElementById('search-url').value + `?item_name=${itemName}&prefecture=${prefecture}`;
+    let url = document.getElementById('search-url').value + `?item_name=${itemName}&prefecture=${prefecture}`;
 
-        if (startDate) {
-            url += `&start_date=${startDate}`;
-        }
-        if (endDate) {
-            url += `&end_date=${endDate}`;
-        }
+    if (startDate) {
+        url += `&start_date=${startDate}`;
+    }
+    if (endDate) {
+        url += `&end_date=${endDate}`;
+    }
 
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-              console.log(data);
-                currentItems = data;
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            currentItems = data;
+            if (currentItems.length === 0) {
+                document.getElementById('item-list').innerHTML = "<p>検索結果がありません。</p>";
+                document.getElementById('prev-page').disabled = true;
+                document.getElementById('next-page').disabled = true;
+                document.getElementById('page-info').textContent = " 0 / 0";
+            } else {
                 updatePagination();
                 displayCurrentPage();
-            })
-            .catch(error => console.error('Error:', error));
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+    function updatePagination() {
+        totalPages = currentItems.length > 0 ? Math.ceil(currentItems.length / itemsPerPage) : 0;
+        currentPage = totalPages > 0 ? 1 : 0;
     }
+
 
     function displayCurrentPage() {
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -237,11 +249,7 @@
         currentPage += offset;
         displayCurrentPage();
     }
-
-    function updatePagination() {
-        totalPages = Math.ceil(currentItems.length / itemsPerPage);
-        currentPage = 1;
-    }
+    
 
     function displayItems(items) {
         items.forEach((item, index) => {
