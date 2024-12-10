@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from django.http import HttpResponse, JsonResponse
-from .models import LostItem, User, ChatRoom, Message
+from .models import LostItem, User, ChatRoom, Message, Block
 from django.db.models import Q
 import re
 from django.db.models.signals import post_save
@@ -204,6 +204,8 @@ from .models import User, ChatRoom, Message
 def chat_room_list(request):
   # セッションからログインしているユーザーのnicknameを取得
   user1_nickname = request.session.get('nickname')
+  if 'chat_room_id' in request.session:
+    del request.session['chat_room_id']
 
   # nicknameに基づいてUserオブジェクトを取得
   user1 = get_object_or_404(User, nickname=user1_nickname)
@@ -265,7 +267,7 @@ def chat_room_create(request):
   item_id = request.POST.get('itemId')
 
   if user2_nickname == 'guest':
-    return HttpResponse("登録者がゲストユーザーのためチャットができません。",status=400)
+    return HttpResponse("登録者がゲストユーザーのためチャットができません。", status=400)
 
   if not user1_nickname or not user2_nickname:
     # 必要なパラメータが不足している場合、エラーメッセージを表示
@@ -276,7 +278,7 @@ def chat_room_create(request):
 
   if existing_chat_room:
     # 既存のチャットルームが見つかった場合
-    return redirect('chat-room', chat_room_id=existing_chat_room.id,item_id=item_id)
+    return redirect('chat-room', chat_room_id=existing_chat_room.id, item_id=item_id)
   else:
     # 新しいチャットルームを作成
     user1 = User.objects.get(nickname=user1_nickname)
@@ -291,6 +293,7 @@ def chat_room_create(request):
 def chat_room(request, chat_room_id):
   # チャットルームを取得
   chatroom = get_object_or_404(ChatRoom, id=chat_room_id)
+  request.session['chatroom_id'] = chat_room_id
 
   # 現在ログインしているユーザーを取得
   user = request.session.get('nickname')
@@ -300,6 +303,8 @@ def chat_room(request, chat_room_id):
   # (ユーザー1以外のユーザーがユーザー2に設定される想定)
   user2 = chatroom.user1 if chatroom.user2 == user1 else chatroom.user2
 
+  block_status = Block.objects.filter(blocker_id=user1.id, blocked_id=user2.id).exists()
+
   # チャットルームのメッセージを取得
   messages = chatroom.messages.all().order_by('timestamp')
 
@@ -308,6 +313,7 @@ def chat_room(request, chat_room_id):
     'messages': messages,
     'user1': user1,
     'user2': user2,
+    'block_status': block_status
   })
 
 
@@ -398,18 +404,48 @@ def lostitem_register_confirm(request):
 
   return render(request, 'lostitem_register_complete.html')
 
+
 @receiver(post_save, sender=Message)
 def notify_user_on_new_message(sender, instance, created, **kwargs):
-    if created:  # 新しいメッセージが作成された場合のみ通知
-        # 送信者が user1 なら user2 に通知し、逆も同様
-        chatroom = instance.chatroom
-        recipient = chatroom.user2 if instance.sender == chatroom.user1 else chatroom.user1
+  if created:  # 新しいメッセージが作成された場合のみ通知
+    # 送信者が user1 なら user2 に通知し、逆も同様
+    chatroom = instance.chatroom
+    sender = instance.sender
+    recipient = chatroom.user2 if instance.sender == chatroom.user1 else chatroom.user1
 
-        if recipient.email:  # メールアドレスが登録されている場合のみ通知
-            send_mail(
-                subject=f"{instance.sender.nickname}からメッセージが届きました",
-                message=f"{instance.sender.nickname}から新しいメッセージが届きました。\n内容: {instance.text}",
-                from_email="doidoiis.sotuken@gmail.com",  # 送信元メールアドレス
-                recipient_list=[recipient.email],
-                fail_silently=False,
-            )
+    is_blocked = Block.objects.filter(blocker=recipient, blocked=sender).exists()
+
+    if is_blocked is False:
+      if recipient.email:  # メールアドレスが登録されている場合のみ通知
+        send_mail(
+          subject=f"{instance.sender.nickname}からメッセージが届きました",
+          message=f"{instance.sender.nickname}から新しいメッセージが届きました。\n内容: {instance.text}",
+          from_email="doidoiis.sotuken@gmail.com",  # 送信元メールアドレス
+          recipient_list=[recipient.email],
+          fail_silently=False,
+        )
+    else:
+      return
+
+
+def block_user(request, user_nickname):
+  """ユーザーをブロックする"""
+  blocker_nickname = request.session.get('nickname')
+  blocker = User.objects.get(nickname=blocker_nickname)  # blockerをUserインスタンスとして取得
+  user_to_block = get_object_or_404(User, nickname=user_nickname)
+  chatroom_id = request.session.get('chatroom_id')
+
+  if blocker != user_to_block:  # 自分自身をブロックしないようにチェック
+    Block.objects.create(blocker=blocker, blocked=user_to_block)  # blockerをUserインスタンスで指定
+  return redirect('chat-room', chat_room_id=chatroom_id)
+
+
+def unblock_user(request, user_nickname):
+  """ユーザーのブロックを解除する"""
+  blocker_nickname = request.session.get('nickname')
+  blocker = User.objects.get(nickname=blocker_nickname)
+  user_to_unblock = get_object_or_404(User, nickname=user_nickname)
+  chatroom_id = request.session.get('chatroom_id')
+
+  Block.objects.filter(blocker=blocker.id, blocked=user_to_unblock).delete()
+  return redirect('chat-room', chat_room_id=chatroom_id)
