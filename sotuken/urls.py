@@ -20,6 +20,4 @@ urlpatterns = [
   path('chat/send_message/<int:chatroom_id>/', views.send_message, name='send_message'),
   path('lostitem_register/', views.lostitem_register, name='lostitem_register'),
   path('lostitem_register_confirm/', views.lostitem_register_confirm, name='lostitem_register_confirm'),
-  path('block_user/<str:user_nickname>/', views.block_user, name='block_user'),
-  path('unblock_user/<str:user_nickname>/', views.unblock_user, name='unblock_user'),
 ]
